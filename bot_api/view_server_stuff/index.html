@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <p id="har" style="white-space: pre-wrap; font-family: monospace;"></p>
+    <script>
+        async function run() {
+            const req = await fetch("http://localhost:3000/data", {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' },
+            });
+            const allData = await req.json();
+
+            console.log(allData)
+
+            let first = allData.find(x => x.client.room.id == "BOT");
+            if (!first?.tickData) return;
+            document.getElementById("har").textContent = drawEngine(first.tickData.engine);
+        }
+
+        setInterval(_ => {
+            run();
+        }, 50);
+        
+        const emojiMinos = {
+            "i": "🟫",
+            "o": "🟨",
+            "j": "🟦",
+            "l": "🟧",
+            "s": "🟩",
+            "z": "🟥",
+            "t": "🟪",
+        }
+
+        function drawEngine(engine) {
+            let all_str = [];
+            let board_new = [0,0,0,0,0,0,0,0,0,0]
+            for (let y = 19; y >= 0; y--) {
+                let str = "";
+                for (let x = 0; x < 10; x++) {
+                    let mino = engine.board.state[y][x]
+                    str += mino ? (emojiMinos[mino.toString().toLowerCase()] || "⬛️") : "⬜️";
+                    board_new[x] += +!!mino * (1 << y);
+                }
+                all_str.push(str);
+            }
+            all_str[5] += `          b2b:         ${engine.stats.b2b + 1}`;
+            all_str[6] += `          queue:       ${engine.held + "," + engine.queue.value.join(",")}`;
+            all_str[7] += `          board state: [${board_new.toString()}]`;
+            return all_str.join("\n");
+        }
+    </script>
+</body>
+</html>

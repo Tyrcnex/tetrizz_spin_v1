@@ -1,0 +1,5 @@
+/target
+**/.DS_Store
+**/.obsidian
+**/node_modules
+**/.env

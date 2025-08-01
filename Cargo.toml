@@ -1,0 +1,35 @@
+[package]
+name = "tetrizz"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+criterion = "0.6.0"
+dhat = "0.3.3"
+enum-map = "2.7.3"
+enumset = "1.1.6"
+itertools = "0.14.0"
+puffin_http = "0.16.1"
+rand = "0.9.1"
+rayon = "1.10.0"
+rustc-hash = "2.1.1"
+serde = "1.0.219"
+serde_json = "1.0.140"
+
+[[bench]]
+name = "movegen_all"
+harness = false
+
+[profile.release]
+lto = "fat"
+codegen-units = 1
+
+[profile.dev]
+overflow-checks = false
+
+[profile.bmark]
+inherits = "release"
+debug = true
+debuginfo-level = 2

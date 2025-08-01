@@ -1,0 +1,21 @@
+{
+  "name": "bot_api",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@haelp/teto": "^3.2.2",
+    "child_process": "^1.0.2",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.1",
+    "express": "^5.1.0",
+    "lodash.clonedeep": "^4.5.0"
+  },
+  "type": "module"
+}
