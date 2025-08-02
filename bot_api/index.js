@@ -5,7 +5,6 @@ import { format } from "util";
 import express from "express";
 import cors from "cors";
 import * as crypto from 'crypto';
-import cloneDeep from "lodash.clonedeep";
 
 import { handleChat } from "./src/chat.js";
 import { handlePlay } from "./src/play.js";
@@ -17,12 +16,24 @@ const app = express();
 const port = 3000;
 
 app.use(cors());
+app.use(express.json())
 
 let allGames = [];
 
 app.get('/data', (req, res) => {
     res.json(allGames.map(filterGameData));
 });
+app.post('/submit-data', (req, res) => {
+    const { funcStr } = req.body;
+    const func = Function("return " + funcStr)();
+    try {
+        func(allGames);
+        res.status(200).json({ message: 'func received successfully' });
+    } catch (err) {
+        res.status(400).json({ message: err.toString() });
+        console.error(err);
+    }
+})
 app.listen(port, _ => console.log(`Server running at http://localhost:${port}`));
 
 const logFile = createWriteStream("./tetr.log", { flags: 'w' });
@@ -76,6 +87,7 @@ const logFuncs = { logWrite, logPrint };
         const gameData = {
             id: Date.now() + Math.random(), // please please please dont collide
             client: undefined,
+            settings: undefined,
             tickData: undefined
         };
         gameData.clear = _ => {
@@ -110,14 +122,15 @@ async function spawnClient(roomCode, gameData) {
         return;
     }
 
-    gameData.client = client;
-
     const settings = {
         enabled: false,
         pps: 1,
         turnbased: 0,
         attitude: "default",
     };
+
+    gameData.client = client;
+    gameData.settings = settings;
 
     room.msg = msgObj => room.chat(msgObj[settings.attitude]);
 
@@ -154,13 +167,17 @@ async function spawnClient(roomCode, gameData) {
 
 process.on("uncaughtException", err => {
     console.error(err);
-    // const id = crypto.randomBytes(8).toString("hex");
-    // logWrite(`ERROR (code ${id})${allGames.length ? ", left rooms" + allGames.map(x => x?.room?.roomid).join(", ") : ""}\n${err.toString()}`);
-    // for (const game of allGames) {
-    //     game.room.chat(`SHOOT something REALLY BAD went wrong so i gtg, if u need to report this, tell chadhary_12345 (tyrcnex on discord) that the error code is ${id}`);
-    //     game.client.destroy();
-    // }
-    // allGames = [];
+    const id = crypto.randomBytes(8).toString("hex");
+    try {
+        logWrite(`ERROR (code ${id})${allGames.length ? ", left rooms" + allGames.map(x => x?.client?.room?.roomid).join(", ") : ""}\n${err.toString()}`);
+        for (const game of allGames) {
+            game.client.room.chat(`SHOOT something REALLY BAD went wrong so i gtg, if u need to report this, tell chadhary_12345 (tyrcnex on discord) that the error code is ${id}`);
+            game.client.destroy();
+        }
+    } catch (err) {
+        console.error(err);
+    }
+    allGames = [];
 });
 
 function filterGameData(data) {
@@ -170,6 +187,7 @@ function filterGameData(data) {
             ...keepKeys(data.client, ["user", "disconnected", "handling"]),
             room: keepKeys(data.client.room, ["id", "type", "name", "name_safe", "owner", "creator", "autostart", "match", "options"])
         },
+        settings: data.settings,
         tickData: data.tickData
     }
 }

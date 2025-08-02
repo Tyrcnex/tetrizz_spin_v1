@@ -8,23 +8,21 @@
 <body>
     <p id="har" style="white-space: pre-wrap; font-family: monospace;"></p>
     <script>
-        async function run() {
+        async function getData() {
             const req = await fetch("http://localhost:3000/data", {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' },
             });
             const allData = await req.json();
-
-            console.log(allData)
-
-            let first = allData.find(x => x.client.room.id == "BOT");
-            if (!first?.tickData) return;
-            document.getElementById("har").textContent = drawEngine(first.tickData.engine);
+            return allData;
         }
-
-        setInterval(_ => {
-            run();
-        }, 50);
+        async function sendFunction(func) {
+            fetch("http://localhost:3000/submit-data", {
+                method: "POST",
+                body: JSON.stringify({ funcStr: func.toString() }),
+                headers: {"Content-Type": "application/json"}
+            }).then(x => x.json()).then(x => console.log(x));
+        }
         
         const emojiMinos = {
             "i": "🟫",
