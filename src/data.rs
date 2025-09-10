@@ -36,8 +36,10 @@ pub struct Game {
 
 #[derive(Debug)]
 pub struct PlacementInfo {
+    pub loc: PieceLocation,
     pub spin: bool,
-    pub lines_cleared: u32
+    pub lines_cleared: u32,
+    pub attack: u32
 }
 
 impl Rotation {
@@ -166,6 +168,11 @@ impl Board {
     pub fn place(&mut self, loc: PieceLocation) -> PlacementInfo {
         let spin = loc.spun;
         for &(x, y) in &loc.blocks() {
+            let got = self.cols.get(x as usize);
+            let got = match got {
+                Some(t) => t,
+                None => panic!("FUCK {:?}", loc)
+            };
             self.cols[x as usize] |= 1 << y;
         }
         let line_mask = match loc.possible_line_clear {
@@ -173,8 +180,10 @@ impl Board {
             false => 0
         };
         PlacementInfo {
+            loc,
             spin,
-            lines_cleared: line_mask.count_ones()
+            lines_cleared: line_mask.count_ones(),
+            attack: 0
         }
     }
 
@@ -204,6 +213,20 @@ impl Board {
             min = min.min(y + (self.cols[x as usize] & ((1 << y) - 1)).leading_zeros() as i8 - 64);
         }
         min
+    }
+
+    #[inline]
+    pub fn push_garbage(&mut self, idx: usize) {
+        for (x, v) in self.cols.iter_mut().enumerate() {
+            *v <<= 1;
+            if idx != x {
+                *v += 1;
+            }
+        }
+    }
+
+    pub fn can_spawn_piece(&self, piece: Piece) -> bool {
+        !self.obstructed(PieceLocation { piece, rotation: Rotation::Up, spun: false, x: 4, y: 21, possible_line_clear: false})
     }
 }
 
@@ -254,7 +277,6 @@ impl Game {
     }
 
     pub fn can_spawn(&self, next: Piece) -> bool {
-        !self.board.obstructed(PieceLocation { piece: next, rotation: Rotation::Up, spun: false, x: 4, y: 21, possible_line_clear: false})
-        && !self.board.obstructed(PieceLocation { piece: self.hold, rotation: Rotation::Up, spun: false, x: 4, y: 21, possible_line_clear: false})
+        self.board.can_spawn_piece(next) || self.board.can_spawn_piece(self.hold)
     }
 }

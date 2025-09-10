@@ -53,7 +53,7 @@ const logFuncs = { logWrite, logPrint };
 
 (async function () {
     const client = await Client.connect({
-        username: process.env.USERNAME,
+        username: process.env.TETRIO_USERNAME,
         password: process.env.PASSWORD
     });
 
@@ -105,7 +105,7 @@ const logFuncs = { logWrite, logPrint };
 
 async function spawnClient(roomCode, gameData) {
     const client = await Client.connect({
-        username: process.env.USERNAME,
+        username: process.env.TETRIO_USERNAME,
         password: process.env.PASSWORD
     });
 

@@ -213,7 +213,7 @@ const defaultCommands = {
 };
 
 export async function handleChat(data, client, room, settings) {
-    if (data.user.username == process.env.USERNAME) return;
+    if (data.user.username == process.env.TETRIO_USERNAME) return;
 
     let content = data.content.trim();
     if (content.toLowerCase().replace(/[^0-9a-z]/g, "").match(/(g|good)(l|luck|1)(h|have)(f|fun)/g)) {
@@ -224,7 +224,7 @@ export async function handleChat(data, client, room, settings) {
         room.chat("never say gg");
     }
 
-    let prefix = content.toLowerCase().match(new RegExp(`^(%|${process.env.USERNAME} |@${process.env.USERNAME} )`));
+    let prefix = content.toLowerCase().match(new RegExp(`^(%|${process.env.TETRIO_USERNAME} |@${process.env.TETRIO_USERNAME} )`));
     if (!prefix) return;
     let args = content.slice(prefix[0].length).trim().split(" ");
     let userCmd = args?.shift()?.toLowerCase();

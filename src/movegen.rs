@@ -15,9 +15,14 @@ pub fn movegen(game: &Game, next: Piece) -> Vec<PieceLocation> {
     next_pieces
 }
 
+
 pub fn movegen_piece(board: &Board, piece: Piece) -> Vec<PieceLocation> {
     const ROT: [Rotation; 4] = [Rotation::Up, Rotation::Right, Rotation::Down, Rotation::Left];
     const PAIRS: [[usize; 3]; 4] = [[1, 2, 3], [0, 2, 3], [0, 1, 3], [0, 1, 2]];
+
+    if !board.can_spawn_piece(piece) {
+        return vec![];
+    }
 
     let now = std::time::Instant::now();
 
@@ -113,28 +118,28 @@ pub fn movegen_piece(board: &Board, piece: Piece) -> Vec<PieceLocation> {
     }
 
     let actual_spin: Vec<[u64; 10]> = match piece {
-        Piece::T => {
-            let mut s = [0u64; 10];
-            for x in 0..10 {
-                let left = board.cols.get(x - 1).copied().unwrap_or(FULL_HEIGHT);
-                let right = board.cols.get(x + 1).copied().unwrap_or(FULL_HEIGHT);
+        // Piece::T => {
+        //     let mut s = [0u64; 10];
+        //     for x in 0..10 {
+        //         let left = board.cols.get(x - 1).copied().unwrap_or(FULL_HEIGHT);
+        //         let right = board.cols.get(x + 1).copied().unwrap_or(FULL_HEIGHT);
                 
-                let c1 = left << 1 | 1;
-                let c2 = right << 1 | 1;
-                let c3 = right >> 1;
-                let c4 = left >> 1;
+        //         let c1 = left << 1 | 1;
+        //         let c2 = right << 1 | 1;
+        //         let c3 = right >> 1;
+        //         let c4 = left >> 1;
 
-                s[x] =   (c1 & c2 & (c3 | c4))
-                       | (c3 & c4 & (c1 | c2));
-            }
-            new_maps.iter().map(|map| [0,1,2,3,4,5,6,7,8,9].map(|x| 
-                (s[x] 
-                | (map.obstructed.get(x - 1).copied().unwrap_or(FULL_HEIGHT)
-                   & map.obstructed.get(x + 1).copied().unwrap_or(FULL_HEIGHT)
-                   & (map.obstructed[x] >> 1)))
-                & map.spin_loc[x]
-            )).collect()
-        },
+        //         s[x] =   (c1 & c2 & (c3 | c4))
+        //                | (c3 & c4 & (c1 | c2));
+        //     }
+        //     new_maps.iter().map(|map| [0,1,2,3,4,5,6,7,8,9].map(|x| 
+        //         (s[x] 
+        //         | (map.obstructed.get(x - 1).copied().unwrap_or(FULL_HEIGHT)
+        //            & map.obstructed.get(x + 1).copied().unwrap_or(FULL_HEIGHT)
+        //            & (map.obstructed[x] >> 1)))
+        //         & map.spin_loc[x]
+        //     )).collect()
+        // },
         _ => {
             new_maps.iter().map(|map| [0,1,2,3,4,5,6,7,8,9].map(|x| 
                 map.obstructed.get(x - 1).copied().unwrap_or(FULL_HEIGHT)
@@ -153,6 +158,7 @@ pub fn movegen_piece(board: &Board, piece: Piece) -> Vec<PieceLocation> {
             let mut remaining = map.explored[x as usize];
             let mut spin_remaining = actual_spin[rot_i][x as usize];
             
+            #[allow(arithmetic_overflow)]
             let mut plc = remaining
                 & map.obstructed.get((x - 1) as usize).copied().unwrap_or(FULL_HEIGHT)
                 & map.obstructed.get((x + 1) as usize).copied().unwrap_or(FULL_HEIGHT);
@@ -165,7 +171,7 @@ pub fn movegen_piece(board: &Board, piece: Piece) -> Vec<PieceLocation> {
                         rotation: ROT[rot_i],
                         spun: spin_remaining & 1 == 1,
                         possible_line_clear: plc & 1 == 1,
-                        x, y
+                        x: x as i8, y
                     };
                     positions.push(loc);
                     // let mut new_board = board.clone();
@@ -232,11 +238,12 @@ pub struct CollisionMap {
 }
 
 impl CollisionMap {
+    
     pub fn new(board: &Board, piece: Piece, rotation: Rotation) -> Self {
         let mut obstructed = [0u64; 10];
         for (dx, dy) in rotation.rotate_blocks(piece.blocks()) {
             for x in 0..10 {
-                let c = board.cols.get((x + dx) as usize).copied().unwrap_or(FULL_HEIGHT);
+                let c = board.cols.get(x + dx as usize).copied().unwrap_or(FULL_HEIGHT);
                 let c = match dy < 0 {
                     true => !(!c << -dy),
                     false => c >> dy
@@ -245,9 +252,26 @@ impl CollisionMap {
             }
         }
 
+        if obstructed[4] & (1 << 21) != 0 {
+            return Self {
+                obstructed,
+                all_valid: [0u64; 10],
+                explored: [0u64; 10],
+                spin_loc: [0u64; 10]
+            };
+        }
+
         let max_height = board.cols.iter().map(|x| 64 - x.leading_zeros() as i8).max().unwrap();
-        let mut all_valid: [u64; 10] = [(1 << (max_height + 3)) - 1; 10];
-        let mut explored = [1 << (max_height + 2); 10];
+        let mut all_valid: [u64; 10] = if max_height < 18 {
+            [(1 << (max_height + 3)) - 1; 10]
+        } else {
+            [(1 << 21) - 1; 10]
+        };
+        let mut explored = if max_height < 18 {
+            [1 << (max_height + 2); 10]
+        } else {
+            [1 << 21; 10]
+        };
         for x in 0..10 {
             all_valid[x] &= !obstructed[x];
             explored[x] &= !obstructed[x];
@@ -263,6 +287,7 @@ impl CollisionMap {
         res
     }
 
+    
     fn floodfill(&mut self) -> [u64; 10] {
         let mut last = [0u64; 10];
         let mut res = self.explored;
@@ -429,6 +454,9 @@ pub fn keypress_generation(board: &Board, loc: PieceLocation) -> (Vec<Key>, Vec<
         nodes_to_search = new_nodes;
     }
 
+    if found_node.is_none() {
+        return (vec![Key::hardDrop], vec![]);
+    }
     let mut found_node = found_node.unwrap();
     let mut queue_keys: Vec<KeyNode> = vec![found_node.clone()];
     while found_node.id != found_node.prev_id {
