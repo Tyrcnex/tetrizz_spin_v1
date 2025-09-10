@@ -6,7 +6,7 @@
     <title>Document</title>
 </head>
 <body>
-    <p id="har" style="white-space: pre-wrap; font-family: monospace;"></p>
+    <canvas width="1000" height="1000" id="cnv"></canvas>
     <script>
         async function getData() {
             const req = await fetch("http://localhost:3000/data", {
@@ -34,7 +34,8 @@
             "t": "🟪",
         }
 
-        function drawEngine(engine) {
+        function printEngine(engine) {
+            if (!engine) return;
             let all_str = [];
             let board_new = [0,0,0,0,0,0,0,0,0,0]
             for (let y = 19; y >= 0; y--) {
@@ -51,6 +52,64 @@
             all_str[7] += `          board state: [${board_new.toString()}]`;
             return all_str.join("\n");
         }
+
+        const cnv = document.getElementById("cnv");
+        const ctx = cnv.getContext("2d");
+
+        const PIECES = {
+            z: { minos: [[-1, 1], [0, 1], [0, 0], [1, 0]], color: "#ff3030" },
+            s: { minos: [[-1, 0], [0, 0], [0, 1], [1, 1]], color: "#16c736" },
+            i: { minos: [[-1, 0], [0, 0], [1, 0], [2, 0]], color: "#18f5ed" },
+            o: { minos: [[0, 0], [1, 0], [0, 1], [1, 1]], color: "#fce026" },
+            j: { minos: [[-1, 0], [0, 0], [1, 0], [-1, 1]], color: "#5126fc" },
+            l: { minos: [[-1, 0], [0, 0], [1, 0], [1, 1]], color: "#fc9c26" },
+            t: { minos: [[-1, 0], [0, 0], [1, 0], [0, 1]], color: "#f226fc" },
+        };
+
+        function paintEngine(engine) {
+            if (!engine) return;
+            ctx.fillStyle = "#fff";
+            ctx.fillRect(0, 0, 1000, 1000);
+            for (let x = 0; x < 10; x++) {
+                for (let y = 0; y < 25; y++) {
+                    let boardMino = engine.board.state[y][x];
+                    if (y > 19 && !boardMino) continue;
+                    ctx.fillStyle = boardMino ? (PIECES[boardMino]?.color || "#a3a3a3") : "#232323";
+                    ctx.fillRect(150 + 30 * x, 30 * (22 - y), 30, 30);
+                }
+            }
+            let p = engine.queue.value[0];
+            ctx.fillStyle = PIECES[p].color;
+            for (const mino of PIECES[p].minos) {
+                ctx.fillRect(270 + 30 * mino[0], 30 * (1 - mino[1]), 30, 30)
+            }
+            ctx.fillStyle = "#eee";
+            ctx.fillRect(450, 90, 200, 600);
+            for (let j = 1; j < 6; j++) {
+                let p = engine.queue.value[j];
+                ctx.fillStyle = PIECES[p].color;
+                for (const mino of PIECES[p].minos) {
+                    ctx.fillRect(530 + 30 * mino[0], 30 * (20 - 3 * j - mino[1]), 30, 30)
+                }
+            }
+            ctx.fillStyle = "#000";
+            ctx.font = `bold 24px "Jetbrains Mono"`;
+            ctx.textAlign = "right";
+            ctx.fillText("Pcs: " + engine.stats.pieces, 120, 400);
+            ctx.fillText("Att: " + engine.stats.garbage.attack, 120, 450);
+            ctx.fillText("APP: " + (engine.stats.garbage.attack / engine.stats.pieces).toFixed(2), 120, 500);
+
+            ctx.fillText((engine.frame / 60).toFixed(2), 120, 650);
+
+            if (engine.stats.b2b < 3) return;
+            ctx.font = `bold 48px "Jetbrains Mono"`;
+            ctx.fillText(engine.stats.b2b + "", 120, 300);
+        }
+
+        setInterval(async _ => {
+            let ddd = await getData();
+            paintEngine(ddd[0]?.tickData?.engine);
+        }, 50);
     </script>
 </body>
 </html>

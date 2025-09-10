@@ -1,10 +1,11 @@
 import * as dotenv from "dotenv";
 import { settingsSpectate } from "./utils.js";
+import { writeFileSync } from "fs";
 
 dotenv.config({ path: "../.env", quiet: true });
 
 function hostOnly(room, msgData) {
-    if (msgData.user._id != room.owner) {
+    if (msgData.user._id != room.owner && msgData.user._id != process.env.OWNER_ID) {
         room.msg({
             default: "This command is restricted to host level.",
             cute: "w-what? b-but ur not the owner- i mean, host...",
@@ -103,13 +104,13 @@ const defaultCommands = {
         },
     },
     settings: {
-        aliases: ["config"],
+        aliases: ["config", "s"],
         hostonly: false,
         description: "view or change settings of the bot",
         usage: "usage:\n - %settings\n - %settings [setting]\n - %settings [setting] [value]\n\nexamples:\n - %settings\n - %settings turnbased\n - %settings turnbased 2",
         exec: (client, room, settings, msgData, args) => {
             if (!args.length) {
-                room.chat(`Settings:\n - PPS: ${settings.pps}\n - Turn-based (turnbased): ${settings.turnbased == 0 ? "off" : settings.turnbased}\n - Attitude: ${settings.attitude}`);
+                room.chat(`Settings:\n - PPS: ${settings.pps}\n - Turn-based (turnbased): ${settings.turnbased == 0 ? "off" : settings.turnbased}\n - Attitude: ${settings.attitude}\n - Finesse: ${settings.finesse}`);
                 return;
             }
             if (args.length == 1) {
@@ -159,6 +160,14 @@ const defaultCommands = {
                 room.chat("please use pps command instead");
             } else if (setting == "attitude") {
                 room.chat("please use attitude command instead");
+            } else if (setting == "finesse") {
+                const validFinesse = ["inhuman", "bot"];
+                if (validFinesse.includes(value)) {
+                    settings.finesse = value;
+                    room.chat(`set finesse to ${value}!`);
+                } else {
+                    room.chat(`invalid finesse ${value}`);
+                }
             }
         },
     },
@@ -178,6 +187,29 @@ const defaultCommands = {
             }
         },
     },
+    savereplay: {
+        aliases: ["replay"],
+        hostonly: false,
+        description: "dev only command to save replays",
+        usage: "usage: %savereplay",
+        exec: (client, room, settings, msgData, args) => {
+            if (msgData.user._id != process.env.OWNER_ID) {
+                room.chat("this is a dev only command");
+                return;
+            }
+            if (args.length > 1) {
+                room.chat("the extra part of the filename cannot have spaces! use underscores or dashes")
+            }
+            const replay = client.room.replay?.export();
+            if (!replay) {
+                room.chat("no replay found!");
+                return;
+            }
+            const filename = `${(new Date()).toJSON().slice(0,19).replace("T", "_").replaceAll(":", "-")}${args.length ? "__" + args[0] : ""}.ttrm`;
+            writeFileSync(`../replays/${filename}`, JSON.stringify(replay));
+            room.chat(`saved replay to ${filename}!`);
+        }
+    }
 };
 
 export async function handleChat(data, client, room, settings) {
@@ -211,24 +243,31 @@ export async function handleChat(data, client, room, settings) {
                 return;
             }
             let cmd = args[0]?.toLowerCase();
+            let h;
             if (cmd == "help") {
                 room.chat(`--- command %help ---\nhelps you with commands\nusage:\n - %help\n - %help [command name]\n\nexamples:\n - %help\n - %help pps`);
-            } else if (!Object.keys(commands).some((x) => x == cmd)) {
-                room.chat(`unknown command ${cmd}`);
-                return;
-            } else {
+            } else if (Object.keys(commands).find(x => x == cmd)) {
                 let hcmdObj = commands[cmd];
                 room.chat(`--- command %${cmd} ---\n${hcmdObj.description}\n${hcmdObj.usage}`);
+            } else if (h = Object.values(commands).find(x => x.aliases.includes(cmd))) {
+                room.chat(`--- command %${cmd} ---\n${h.description}\n${h.usage}`);
+            } else {
+                room.chat(`unknown command ${cmd}`);
+                return;
             }
         },
     };
 
-    if (!Object.keys(commands).some((x) => x == userCmd)) {
+    let cmdObj;
+
+    if (Object.keys(commands).find(x => x == userCmd)) {
+        cmdObj = commands[userCmd];
+    } else if (cmdObj = Object.values(commands).find(x => x.aliases.includes(userCmd))) {
+    } else {
         room.chat(`unknown command ${userCmd}`);
         return;
     }
 
-    let cmdObj = commands[userCmd];
     if (cmdObj.hostonly && !hostOnly(room, data)) {
         return;
     }

@@ -6,7 +6,9 @@ const requiredOptions = {
     room_handling: false,
     allow_harddrop: true,
     boardwidth: 10,
-    boardheight: 20
+    boardheight: 20,
+    bagtype: "7-bag",
+    
 }
 
 const emojiMinos = {
@@ -37,14 +39,13 @@ export function drawEngine(engine) {
     return all_str.join("\n");
 }
 
-export function tryUnspectate(room, settings) {
-    try {
-        room.switch("player");
+export async function tryUnspectate(room, settings) {
+    room.switch("player").then(_ => {
         settings.enabled = true;
-    } catch (err) {
+    }).catch(e => {
         room.chat("error occured when trying to unspectate, room is probably full");
         settings.enabled = false;
-    }
+    });
 }
 
 export function roomCheck(room) {
@@ -57,17 +58,17 @@ export function roomCheck(room) {
     return allInvalid;
 }
 
-export function settingsSpectate(room, settings) {
+export async function settingsSpectate(room, settings) {
     let invalidOptions = roomCheck(room);
     if (!Object.keys(invalidOptions).length) {
-        tryUnspectate(room, settings);
+        await tryUnspectate(room, settings);
     } else {
         let cmd = `/set ${Object.entries(invalidOptions).map(([k, v]) => `options.${k}=${v}`).join("; ")}`;
         room.msg({
-            default: `Invalid settings, please run the following command:\n\n${cmd}`,
-            cute: `im scawed of these settings, m-master could you pwease run this:\n\n${cmd}`,
-            bot: `Invalid settings. The following command may aid in fixing the issue:\n\n${cmd}`,
-            chadhary: `wrong settings bro run this:\n\n${cmd}`
+            default: `Invalid settings, please run the following command:\n\n${cmd}\n\nThen, run %unspectate.`,
+            cute: `im scawed of these settings, m-master could you pwease run this:\n\n${cmd}\n\nwhen its s-safe pwease %unspectate`,
+            bot: `Invalid settings. The following command may aid in fixing the issue:\n\n${cmd}.\n\nAfter completion, you must run the %unspectate command.`,
+            chadhary: `wrong settings bro run this:\n\n${cmd}\n\nafter that run %unspectate thx`
         });
         room.switch("spectator");
         settings.enabled = false;
