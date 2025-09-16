@@ -111,7 +111,7 @@ async function spawnClient(roomCode, gameData) {
 
     const bot_engine = {
         // engine: child_process.spawn("../target/release/keygen"),
-        engine: child_process.spawn("../target/ktest/keygen"),
+        engine: child_process.spawn("../target/release/keygen"),
         keyInfo: {}
     };
     bot_engine.engine.stdout.on("data", data => {
