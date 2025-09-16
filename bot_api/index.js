@@ -110,7 +110,6 @@ async function spawnClient(roomCode, gameData) {
     });
 
     const bot_engine = {
-        // engine: child_process.spawn("../target/release/keygen"),
         engine: child_process.spawn("../target/release/keygen"),
         keyInfo: {}
     };

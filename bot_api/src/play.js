@@ -84,23 +84,6 @@ export async function handlePlay(data, client, room, settings, gameData, logFunc
         if (settings.finesse == "inhuman") {
             if (bot_engine.keyInfo.allKeys.length != 0 && dt.frame - bot_engine.keyInfo.startFrame > 60 / settings.pps - bot_engine.keyInfo.length - 1) {
                 let key = bot_engine.keyInfo.allKeys.shift();
-                // if (bot_engine.keyInfo.allKeys.length == 0) {
-                //     bot_engine.keyInfo.length == 0;
-                //     if (key != "hardDrop") logPrint("Keyfinder error: hardDrop assert failed");
-                //     const shiftedLoc = centerToCorner(bot_engine.keyInfo.desiredLocation);
-                //     const tetrioLoc = {
-                //         piece: engine.falling.symbol.toUpperCase(),
-                //         x: engine.falling.x,
-                //         y: engine.falling.y,
-                //         rotation: engine.falling.rotation
-                //     };
-                //     if (!(
-                //         shiftedLoc.piece == tetrioLoc.piece
-                //         && shiftedLoc.x == tetrioLoc.x 
-                //         && shiftedLoc.y == tetrioLoc.y
-                //         && shiftedLoc.rotation == tetrioLoc.rotation
-                //     )) logPrint(`Keyfinder error: expected ${JSON.stringify(shiftedLoc)}, got ${JSON.stringify(tetrioLoc)}`);
-                // }
                 return { keys: [
                     keydown(key, dt.frame),
                     keyup(key, dt.frame, 0.2 * (key == "softDrop"))

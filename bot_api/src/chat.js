@@ -175,7 +175,7 @@ const defaultCommands = {
         aliases: ["personality"],
         hostonly: false,
         description: "change the attitude/personality of the bot",
-        usage: "usage: %attitude [attitude type]\n\nexamples:\n - %attitude cute\n - %attitude depressed",
+        usage: "usage: %attitude [attitude type]\n\nexamples:\n - %attitude cute\n - %attitude chadhary",
         exec: (client, room, settings, msgData, args) => {
             const validAttitudes = ["bot", "default", "cute", "chadhary"];
             let attitude = args[0]?.toLowerCase();
@@ -216,13 +216,13 @@ export async function handleChat(data, client, room, settings) {
     if (data.user.username == process.env.TETRIO_USERNAME) return;
 
     let content = data.content.trim();
-    // if (content.toLowerCase().replace(/[^0-9a-z]/g, "").match(/(g|good)(l|luck|1)(h|have)(f|fun)/g)) {
-    //     room.chat("never say glhf");
-    // }
+    if (content.toLowerCase().replace(/[^0-9a-z]/g, "").match(/(g|good)(l|luck|1)(h|have)(f|fun)/g)) {
+        room.chat("never say glhf");
+    }
 
-    // if (content.toLowerCase().replace(/[^0-9a-z]/g, "").match(/(g|good)(g|game)/g)) {
-    //     room.chat("never say gg");
-    // }
+    if (content.toLowerCase().replace(/[^0-9a-z]/g, "").match(/(g|good)(g|game)/g)) {
+        room.chat("never say gg");
+    }
 
     let prefix = content.toLowerCase().match(new RegExp(`^(%|${process.env.TETRIO_USERNAME} |@${process.env.TETRIO_USERNAME} )`));
     if (!prefix) return;
