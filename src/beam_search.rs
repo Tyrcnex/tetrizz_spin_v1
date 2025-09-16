@@ -31,14 +31,14 @@ impl Ord for Node {
     }
 }
 
-pub fn search(root: &Game, queue: Vec<Piece>, eval: &Eval, depth: usize, width: usize) -> PieceLocation {
+pub fn search(root: &Game, queue: Vec<Piece>, eval: &Eval, depth: usize, width: usize, impending: u32) -> PieceLocation {
     assert!(queue.len() > depth + 1);
     let search_loc = movegen(root, queue[0]);
     let mut heap: BinaryHeap<Node> = BinaryHeap::with_capacity(width + 1);
     for (id, &loc) in search_loc.iter().enumerate() {
         let mut game = root.clone();
         let placement_info = game.advance(queue[0], loc);
-        let score = eval.eval(root, &game, &placement_info);
+        let score = eval.eval(root, &game, &placement_info, impending);
         insert_if_better(&mut heap, Node { game, id, score }, width);
     }
     let mut next: BinaryHeap<Node> = BinaryHeap::with_capacity(width + 1);
@@ -50,7 +50,7 @@ pub fn search(root: &Game, queue: Vec<Piece>, eval: &Eval, depth: usize, width: 
                 if !game.can_spawn(queue[idx + 1]) {
                     continue;
                 }
-                let score = eval.eval(root, &game, &placement_info);
+                let score = eval.eval(root, &game, &placement_info, impending);
                 insert_if_better(&mut next, Node { game, id: node.id, score }, width);
             }
         }

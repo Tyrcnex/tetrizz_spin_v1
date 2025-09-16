@@ -30,21 +30,83 @@ pub fn eval_fitness(queue: Vec<Piece>, hold: Piece, weights: [f32; 14]) -> f32 {
     const MOVES_MADE: usize = 500;
 
     let mut fitnesses: Vec<f32> = vec![];
+    let eval = Eval::from(weights);
     for _ in 0..GAMES_PLAYED {
         let mut test_queue = queue.clone();
         let test_hold = hold.clone();
         let mut game = Game::new(Some(test_hold));
-        let eval = Eval::from(weights);
         let mut max: u64 = 0;
-        for _ in 0..MOVES_MADE {
-            let loc = search(&game, test_queue.clone(), &eval, 15, 3000);
-            game.advance(test_queue[0], loc);
+        let mut predicted_attack = 0;
+        let mut predicted_surge = 0;
+        let mut pieces_placed = 0;
+        for ii in 0..MOVES_MADE {
+            let loc = search(&game, test_queue.clone(), &eval, 15, 3000, predicted_attack);
+
+
+
+
+            // let mut outstr: Vec<String> = vec![];
+            // for y in (0..20).rev() {
+            //     let mut vstr = String::new();
+            //     for x in 0..10 {
+            //         vstr.push_str(
+            //             if (game.board.cols[x as usize] & (1 << y)) > 0 { "🟩" }
+            //             else if loc.blocks().iter().any(|(bx, by)| *bx == x && *by == y) {
+            //                 if loc.spun { "🟨" }
+            //                 else { "🟥" }
+            //             }
+            //             else { "⬜️" }
+            //         );
+            //     }
+            //     outstr.push(vstr);
+            // }
+
+            // let mut queue5 = test_queue.clone();
+            // queue5.truncate(5);
+
+            // outstr[5]  += &format!("          b2b:            ⭐️ \x1b[1m{}\x1b[0m ⭐️ ({} pieces/b2b)", game.b2b, (ii + 1) as f32 / game.b2b as f32);
+            // outstr[6]  += &format!("          pieces placed:    {:?}", ii + 1);
+            // outstr[7]  += &format!("          board:            {:?}", game.board.cols);
+            // outstr[8]  += &format!("          queue (next 5):   {:?}", queue5);
+            // outstr[9]  += &format!("          hold piece:       {:?}", game.hold);
+            // outstr[10] += &format!("          predicted surge:  {:?}", predicted_surge);
+            // outstr[11] += &format!("          predicted attack: {:?}", t_attack);
+            
+            // outstr[13] += &format!("          placed piece:     {:?}", loc.piece);
+
+            // println!("\n\n\n\n\n\n\n\n{}", outstr.join("\n"));
+
+
+
+
+
+
+
+            let info = game.advance(test_queue[0], loc);
             if loc.piece == game.hold {
                 game.hold = test_queue[0];
             }
-            if rng.random_bool(0.08) {
+            if ii % 3 == 0 {
+                predicted_surge += 1;
+            }
+
+            let difficulty = (ii as f64) / 3000.0;
+            if rng.random_bool(0.05 + difficulty) {
+                let t = rng.random_range(1..=2);
+                predicted_attack += t;
+            } else if rng.random_bool(2.0 * (0.05 + difficulty)) {
+                let t = rng.random_range(3..=4);
+                predicted_attack += t;
+            }
+
+            if rng.random_bool(0.01) {
+                predicted_attack += predicted_surge;
+                predicted_surge = 0;
+            }
+
+            if info.lines_cleared == 0 && predicted_attack > 0 {
                 let col = rng.random_range(0..10);
-                let shift = rng.random_range(1..5) + (if rng.random_bool(0.05) { rng.random_range(1..5) } else { 0 });
+                let shift = predicted_attack.min(8);
                 for x in 0..10 {
                     if x == col {
                         game.board.cols[x] <<= shift;
@@ -52,8 +114,14 @@ pub fn eval_fitness(queue: Vec<Piece>, hold: Piece, weights: [f32; 14]) -> f32 {
                     }
                     game.board.cols[x] = !(!game.board.cols[x] << shift);
                 }
+                predicted_attack -= shift;
             }
+            predicted_attack = predicted_attack.max(info.attack) - info.attack;
+
             test_queue.remove(0);
+
+            pieces_placed = ii;
+
             if game.board.cols.iter().map(|col| 64 - col.leading_zeros()).max().unwrap() > 15 {
                 break;
             }
@@ -61,7 +129,8 @@ pub fn eval_fitness(queue: Vec<Piece>, hold: Piece, weights: [f32; 14]) -> f32 {
                 max = game.b2b;
             }
         }
-        fitnesses.push(250.0 * max as f32 / MOVES_MADE as f32);
+        fitnesses.push(max as f32 * pieces_placed as f32 / MOVES_MADE as f32);
+        // fitnesses.push(pieces_placed as f32);
     }
     fitnesses.iter().sum::<f32>() / GAMES_PLAYED as f32
 }
@@ -86,7 +155,7 @@ impl Agent {
         }
         Self {
             weights: normalized(arr),
-            fitness: 0.0
+            fitness: 99999999.0
         }
     }
 
@@ -107,16 +176,19 @@ impl Agent {
 }
 
 pub fn run_genetic_algo() {
+    rayon::ThreadPoolBuilder::new().num_threads(8).build_global().unwrap();
+
     const NUM_AGENTS: usize = 100;
     const GENETIC_ITERATIONS: usize = 50;
-    const REPRODUCE: usize = 30;
-    const MUTATE: usize = 10;
+    const REPRODUCE: usize = 10;
+    const MUTATE: usize = 70;
     const BATCH_POPULATION: usize = 20;
 
     let mut rng = rand::rng();
     let mut agents: Vec<Agent> = (0..NUM_AGENTS).map(|_| Agent::new_random()).collect();
 
     let mut best_agent: Agent = Agent::new_random();
+    best_agent.fitness = 0.0;
 
     for n in 0..GENETIC_ITERATIONS {
         println!("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n🤩🤩🤩🤩🤩🤩🤩🤩\n🤩🤩🤩🤩🤩🤩🤩🤩\n🤩🤩🤩🤩🤩🤩🤩🤩\n🤩🤩🤩🤩🤩🤩🤩🤩\n\x1b[1mITERATION {}/{GENETIC_ITERATIONS}\x1b[0m", n + 1);
@@ -153,13 +225,14 @@ pub fn run_genetic_algo() {
         }
 
         for _ in 0..MUTATE {
-            let mut select_two_agents = agents.iter().choose_multiple(&mut rng, BATCH_POPULATION);
-            select_two_agents.sort_by(|a, b| b.fitness.partial_cmp(&a.fitness).unwrap());
-            let mut new_agent = select_two_agents[0].clone();
-            for weight in &mut new_agent.weights {
-                *weight += rng.random_range(-20.0..20.0);
-            }
-            agents.push(new_agent);
+            agents.push(Agent::new_random());
+            // let mut select_two_agents = agents.iter().choose_multiple(&mut rng, BATCH_POPULATION);
+            // select_two_agents.sort_by(|a, b| b.fitness.partial_cmp(&a.fitness).unwrap());
+            // let mut new_agent = select_two_agents[0].clone();
+            // for weight in &mut new_agent.weights {
+            //     *weight += rng.random_range(-20.0..20.0);
+            // }
+            // agents.push(new_agent);
         }
         agents.sort_by(|a, b| b.fitness.partial_cmp(&a.fitness).unwrap());
         agents = agents[0..NUM_AGENTS].iter().map(|x| if x.fitness == 0.0 { Agent::new_random() } else { x.clone() } ).collect::<Vec<Agent>>();
@@ -169,3 +242,12 @@ pub fn run_genetic_algo() {
         println!("\x1b[1mBest agent: \x1b[0m{:?}", best_agent);
     }
 }
+
+// pub fn run_genetic_algo() {
+//     let agent = Agent {
+//         weights: [-79.400375, -55.564907, -125.680145, -170.41902, 10.167948, -172.78625, -478.7291, 86.84883, 368.89203, 272.57874, 28.938646, -104.59018, -496.8832, 458.29822],
+//         fitness: 0.0
+//     };
+//     let (hold, queue) = gen_queue(200);
+//     eval_fitness(queue.clone(), hold.clone(), agent.weights);
+// }

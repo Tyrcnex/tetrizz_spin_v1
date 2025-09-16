@@ -54,7 +54,7 @@ const logFuncs = { logWrite, logPrint };
 (async function () {
     const client = await Client.connect({
         username: process.env.TETRIO_USERNAME,
-        password: process.env.PASSWORD
+        password: process.env.TETRIO_PASSWORD
     });
 
     console.log("Root client connect was successful!");
@@ -106,11 +106,12 @@ const logFuncs = { logWrite, logPrint };
 async function spawnClient(roomCode, gameData) {
     const client = await Client.connect({
         username: process.env.TETRIO_USERNAME,
-        password: process.env.PASSWORD
+        password: process.env.TETRIO_PASSWORD
     });
 
     const bot_engine = {
-        engine: child_process.spawn("../target/release/keygen"),
+        // engine: child_process.spawn("../target/release/keygen"),
+        engine: child_process.spawn("../target/ktest/keygen"),
         keyInfo: {}
     };
     bot_engine.engine.stdout.on("data", data => {

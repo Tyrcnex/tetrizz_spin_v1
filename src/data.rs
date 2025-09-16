@@ -216,11 +216,12 @@ impl Board {
     }
 
     #[inline]
-    pub fn push_garbage(&mut self, idx: usize) {
+    pub fn push_garbage(&mut self, idx: usize, n: usize) {
         for (x, v) in self.cols.iter_mut().enumerate() {
-            *v <<= 1;
             if idx != x {
-                *v += 1;
+                *v = !(!*v << n);
+            } else {
+                *v <<= n;
             }
         }
     }
@@ -261,17 +262,25 @@ impl Game {
         if loc.piece != next {
             self.hold = next;
         }
-        let info = self.board.place(loc);
+        let mut info = self.board.place(loc);
+        self.b2b_deficit += 1;
         if info.lines_cleared > 0 {
+            let mut surge = 0;
+            let mut b2b_clear = false;
+            let pc = self.board.cols.iter().all(|x| *x == 0);
             if info.spin || info.lines_cleared == 4 {
                 self.b2b += 1;
                 self.b2b_deficit = 0;
-            } else if self.board.cols.iter().all(|x| *x == 0) {
+                b2b_clear = true;
+            } else if pc {
                 self.b2b += 2;
                 self.b2b_deficit = 0;
+                b2b_clear = true;
             } else {
                 self.b2b = 0;
+                surge = self.b2b.max(4) - 4;
             }
+            info.attack = calculate_attack(info.lines_cleared, info.spin, b2b_clear, pc, surge as u32);
         }
         info
     }
@@ -279,4 +288,41 @@ impl Game {
     pub fn can_spawn(&self, next: Piece) -> bool {
         self.board.can_spawn_piece(next) || self.board.can_spawn_piece(self.hold)
     }
+}
+
+pub fn calculate_attack(lines_cleared: u32, spin: bool, b2b_clear: bool, pc: bool, surge: u32) -> u32 {
+    // const COMBO_TABLE: [u16; 21] = [0,0,1,1,1,1,2,2,2,2,2,2,2,2,2,2,3,3,3,3,3]; // todo: make const func for this, especially for rounding modes
+
+    if lines_cleared == 0 {
+        return 0;
+    }
+
+    let mut attack = 0;
+    
+    attack += if spin {
+        2 * lines_cleared as u32
+    } else {
+        match lines_cleared {
+            1 => 0,
+            2 => 1,
+            3 => 2,
+            4 => 4,
+            _ => unreachable!()
+        }
+    };
+
+    attack += surge;
+
+    if pc {
+        attack += 5;
+    } else if b2b_clear {
+        attack += 1;
+    }
+
+    // if combo > 0 {
+    //     let combo_mult = 1.0 + combo as f32 / 4.0;
+    //     attack = COMBO_TABLE[combo.max(20) as usize].max((combo_mult * attack as f32) as u16);
+    // }
+    
+    attack
 }

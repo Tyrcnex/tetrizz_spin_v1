@@ -17,7 +17,7 @@ export async function handlePlay(data, client, room, settings, gameData, logFunc
     const { logWrite, logPrint } = logFuncs;
     const [tick, engine, allPlayers] = data; // allPlayers is all engines, for example [{name:'user1',gameid:1,engine:[Engine]}, {name:'user2',gameid:2,engine:[Engine]}]
 
-    const opponentEngine = allPlayers.filter(x => x.name != process.env.USERNAME)[0].engine;
+    const opponentEngine = allPlayers.filter(x => x.name != process.env.TETRIO_USERNAME)[0].engine;
     const additionalBoardInfo = {
         lastb2b: 0,
         b2bDeficit: 0
@@ -70,11 +70,12 @@ export async function handlePlay(data, client, room, settings, gameData, logFunc
                     board: { cols: board_new },
                     hold,
                     b2b: engine.stats.b2b + 1,
-                    b2b_deficit: 0 // remove additionalBoardInfo.b2bDeficit
+                    b2b_deficit: additionalBoardInfo.b2bDeficit
                 },
                 queue,
-                beam_width: Math.floor(3500 / settings.pps),
-                beam_depth: 14
+                beam_width: Math.floor(3200 / settings.pps),
+                beam_depth: 13,
+                impending: engine.garbageQueue.queue.map(x => x.amount).reduce((a,b) => a+b, 0)
             };
 
             bot_engine.engine.stdin.write(JSON.stringify(input) + "\n");

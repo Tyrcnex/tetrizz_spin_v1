@@ -12,10 +12,10 @@ pub struct Eval {
     dependencies: f32,
     i_dependencies: f32,
     spikes: f32,
-    concavity: f32,
+    surge: f32,
     b2b_clear: f32,
     b2b_deficit: f32,
-    b2b_diff: f32
+    cancel: f32
 }
 
 impl Eval {
@@ -31,15 +31,15 @@ impl Eval {
             dependencies: arr[7],
             i_dependencies: arr[8],
             spikes: arr[9],
-            concavity: arr[10],
+            surge: arr[10],
             b2b_clear: arr[11],
             b2b_deficit: arr[12],
-            b2b_diff: arr[13]
+            cancel: arr[13]
         }
     }
 
     // new eval, largely copied from cc2 :3 (sorry mk im still learning)
-    pub fn eval(&self, root: &Game, game: &Game, info: &PlacementInfo) -> f32 {
+    pub fn eval(&self, root: &Game, game: &Game, info: &PlacementInfo, impending: u32) -> f32 {
         // height
         let heights: [i32; 10] = game.board.cols.map(|c| 64 - c.leading_zeros() as i32);
 
@@ -89,7 +89,6 @@ impl Eval {
         let mut dependencies = 0;
         let mut i_dependencies = 0;
         let mut spikes = 0;
-        let mut concavity = 0;
         
         for x in 0..10 {
             if x == w_col {
@@ -103,7 +102,6 @@ impl Eval {
             dependencies += (a - 1 > b && c - 1 > b) as i32;
             i_dependencies += (a - 2 > b && c - 2 > b) as i32;
             spikes += (a + 1 < b && c + 1 < b) as i32;
-            concavity += a - 2 * b + c;
         }
 
         // other stuff
@@ -111,7 +109,8 @@ impl Eval {
         let b2b_deficit = game.b2b_deficit;
 
         // remove this in the future
-        let b2b_diff = if game.b2b > root.b2b { game.b2b - root.b2b } else {  0  };
+        let surge = if game.b2b < root.b2b { (root.b2b - game.b2b).max(4) - 4 } else {  0  };
+        let impending_surge = if game.b2b > root.b2b { game.b2b - root.b2b } else {  0  };
 
         // final part: add some rng so can encourage exploration
 
@@ -125,10 +124,10 @@ impl Eval {
         + self.dependencies * dependencies as f32
         + self.i_dependencies * i_dependencies as f32
         + self.spikes * spikes as f32
-        + self.concavity * concavity as f32
+        + self.surge * impending_surge as f32
         + self.b2b_clear * b2b_clear as u8 as f32
         + self.b2b_deficit * b2b_deficit as f32
-        + self.b2b_diff * b2b_diff as f32;
+        + self.cancel * (impending.min(surge as u32) as f32).ln_1p();
 
         let mut rng = rand::rng();
         let noise = 0.03 * rng.random_range(-res.abs()..=res.abs());

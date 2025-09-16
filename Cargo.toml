@@ -26,6 +26,11 @@ harness = false
 lto = "fat"
 codegen-units = 1
 
+[profile.ktest]
+inherits = "release"
+lto = "fat"
+codegen-units = 1
+
 [profile.dev]
 overflow-checks = false
 
