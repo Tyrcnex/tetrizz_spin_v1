@@ -26,7 +26,7 @@ fn gen_queue(bags: u32) -> (Piece, Vec<Piece>) {
 pub fn eval_fitness(queue: Vec<Piece>, hold: Piece, weights: [f32; 14]) -> f32 {
     let mut rng = rand::rng();
 
-    const GAMES_PLAYED: usize = 4;
+    const GAMES_PLAYED: usize = 2;
     const MOVES_MADE: usize = 500;
 
     let mut fitnesses: Vec<f32> = vec![];
@@ -90,16 +90,16 @@ pub fn eval_fitness(queue: Vec<Piece>, hold: Piece, weights: [f32; 14]) -> f32 {
                 predicted_surge += 1;
             }
 
-            let difficulty = (ii as f64) / 3000.0;
-            if rng.random_bool(0.05 + difficulty) {
+            let difficulty = (ii as f64) / 2000.0;
+            if rng.random_bool(0.03 + difficulty) {
                 let t = rng.random_range(1..=2);
                 predicted_attack += t;
-            } else if rng.random_bool(2.0 * (0.05 + difficulty)) {
+            } else if rng.random_bool(2.0 * (0.03 + difficulty)) {
                 let t = rng.random_range(3..=4);
                 predicted_attack += t;
             }
 
-            if rng.random_bool(0.01) {
+            if rng.random_bool(0.03) {
                 predicted_attack += predicted_surge;
                 predicted_surge = 0;
             }
@@ -122,7 +122,7 @@ pub fn eval_fitness(queue: Vec<Piece>, hold: Piece, weights: [f32; 14]) -> f32 {
 
             pieces_placed = ii;
 
-            if game.board.cols.iter().map(|col| 64 - col.leading_zeros()).max().unwrap() > 15 {
+            if !game.can_spawn(test_queue[0]) {
                 break;
             }
             if game.b2b > max {
@@ -170,7 +170,7 @@ impl Agent {
         }
         Some(Self {
             weights: normalized(this_weights),
-            fitness: 9999999.0
+            fitness: 99999999.0
         })
     }
 }
@@ -178,11 +178,11 @@ impl Agent {
 pub fn run_genetic_algo() {
     rayon::ThreadPoolBuilder::new().num_threads(8).build_global().unwrap();
 
-    const NUM_AGENTS: usize = 100;
-    const GENETIC_ITERATIONS: usize = 50;
-    const REPRODUCE: usize = 10;
-    const MUTATE: usize = 70;
-    const BATCH_POPULATION: usize = 20;
+    const NUM_AGENTS: usize = 250;
+    const GENETIC_ITERATIONS: usize = 70;
+    const REPRODUCE: usize = 30;
+    const MUTATE: usize = 180;
+    const BATCH_POPULATION: usize = 40;
 
     let mut rng = rand::rng();
     let mut agents: Vec<Agent> = (0..NUM_AGENTS).map(|_| Agent::new_random()).collect();

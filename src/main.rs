@@ -35,7 +35,7 @@ fn main() {
     // let eval = Eval::from([124.09421, -367.82962, 306.19385, -213.37228, 25.347483, -389.50592, -255.44745, 357.6906, -31.861994, 318.49466, 7.4310007, 197.0811, -248.70837, 401.57187]);
     // let eval = Eval::from([-103.72366, -55.162273, 197.23633, 315.8147, -314.1474, -406.53665, 165.95236, -47.005257, 229.73164, 267.24597, 6.9954114, -129.99783, 375.4554, 521.28204]);
     // let eval = Eval::from([159.40056, 148.4561, -53.97785, -237.30595, -272.18283, -355.8393, -77.61428, 106.276245, 266.36646, -68.92533, 173.36801, 344.66238, 70.006424, 667.7196]);
-    let eval = Eval::from([-174.7174, -183.66498, 144.02399, 196.72029, -273.96838, -282.34644, -341.98917, 120.17151, 161.30225, -311.3045, 496.6279, -190.79308, -362.77686, -229.22931]);
+    let eval = Eval::from([-75.84844, 292.72372, -413.45255, 366.51523, -72.27489, -258.1235, 225.77525, 350.39087, -231.98624, -11.622365, 444.5556, 56.497406, -253.2774, 196.87518]);
     let mut game = Game::new(Some(test_hold));
 
     let mut all_locations: Vec<PieceLocation> = vec![];
@@ -74,26 +74,27 @@ fn main() {
         outstr[7]  += &format!("          board:            {:?}", game.board.cols);
         outstr[8]  += &format!("          queue (next 5):   {:?}", queue5);
         outstr[9]  += &format!("          hold piece:       {:?}", game.hold);
+        outstr[10] += &format!("          incoming garbage: {:?}", predicted_attack);
         
-        outstr[11] += &format!("          placed piece:     {:?}", loc.piece);
+        outstr[12] += &format!("          placed piece:     {:?}", loc.piece);
 
         println!("\n\n\n\n\n\n\n\n{}", outstr.join("\n"));
 
         let info = game.advance(test_queue[0], loc);
-        if p % 3 == 0 {
+        if p % 5 == 0 {
             predicted_surge += 1;
         }
 
         let difficulty = (p as f64) / 3000.0;
-        if rng.random_bool(0.05 + difficulty) {
+        if rng.random_bool(0.02 + difficulty) {
             let t = rng.random_range(1..=2);
             predicted_attack += t;
-        } else if rng.random_bool(2.0 * (0.05 + difficulty)) {
+        } else if rng.random_bool(2.0 * (0.02 + difficulty)) {
             let t = rng.random_range(3..=4);
             predicted_attack += t;
         }
 
-        if rng.random_bool(0.01) {
+        if rng.random_bool(0.03) {
             predicted_attack += predicted_surge;
             predicted_surge = 0;
         }
@@ -113,7 +114,7 @@ fn main() {
         predicted_attack = predicted_attack.max(info.attack) - info.attack;
 
         test_queue.remove(0);
-        if game.board.cols.iter().map(|col| 64 - col.leading_zeros()).max().unwrap() > 18 {
+        if !game.can_spawn(test_queue[0]) {
             break;
         }
         // std::thread::sleep(std::time::Duration::from_millis(200));

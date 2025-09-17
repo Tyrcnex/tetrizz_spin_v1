@@ -73,7 +73,7 @@ const logFuncs = { logWrite, logPrint };
         //     return;
         // }
 
-        if (allGames.length > 4) {
+        if (allGames.length > 6) {
             client.social.dm(data.sender, "sorry! too many ppl are using the bot rn, ull have to wait for a bit, mb gang ill be back soon")
                 .catch(err => undefined);
             return;
@@ -101,6 +101,8 @@ const logFuncs = { logWrite, logPrint };
 
         await spawnClient(roomCode, gameData);
     });
+
+    setInterval(_ => allGames = allGames.filter(x => x?.client?.room && !x?.client?.disconnected), 10000);
 })();
 
 async function spawnClient(roomCode, gameData) {
