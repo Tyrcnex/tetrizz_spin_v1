@@ -216,13 +216,13 @@ export async function handleChat(data, client, room, settings) {
     if (data.user.username == process.env.TETRIO_USERNAME) return;
 
     let content = data.content.trim();
-    // if (content.toLowerCase().replace(/[^0-9a-z]/g, "").match(/(g|good)(l|luck|1)(h|have)(f|fun)/g)) {
-    //     room.chat("never say glhf");
-    // }
+    if (content.toLowerCase().replace(/[^0-9a-z]/g, "").match(/(g|good)(l|luck|1)(h|have)(f|fun)/g)) {
+        room.chat("never say glhf");
+    }
 
-    // if (content.toLowerCase().replace(/[^0-9a-z]/g, "").match(/(g|good)(g|game)/g)) {
-    //     room.chat("never say gg");
-    // }
+    if (content.toLowerCase().replace(/[^0-9a-z]/g, "").match(/(g|good)(g|game)/g)) {
+        room.chat("never say gg");
+    }
 
     let prefix = content.toLowerCase().match(new RegExp(`^(%|${process.env.TETRIO_USERNAME} |@${process.env.TETRIO_USERNAME} )`));
     if (!prefix) return;
