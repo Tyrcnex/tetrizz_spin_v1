@@ -15,7 +15,8 @@ export async function handlePlay(data, client, room, settings, gameData, logFunc
     };
 
     const { logWrite, logPrint } = logFuncs;
-    const [tick, engine, allPlayers] = data; // allPlayers is all engines, for example [{name:'user1',gameid:1,engine:[Engine]}, {name:'user2',gameid:2,engine:[Engine]}]
+    const [tick, engine] = data; // allPlayers is all engines, for example [{name:'user1',gameid:1,engine:[Engine]}, {name:'user2',gameid:2,engine:[Engine]}]
+    const allPlayers = client.game.players;
 
     const opponentEngine = allPlayers.filter(x => x.name != process.env.USERNAME)[0].engine;
     const additionalBoardInfo = {
@@ -59,7 +60,7 @@ export async function handlePlay(data, client, room, settings, gameData, logFunc
                 }
             }
 
-            let queue = [engine.falling.symbol].concat(engine.queue.value).map(x => x.toUpperCase());
+            let queue = [engine.falling.symbol].concat(engine.queue.raw()).map(x => x.toUpperCase());
             let hold = engine.held.toUpperCase(); // if this errors, u fucking suck because the bot should have held already
 
             if (additionalBoardInfo.lastb2b == engine.stats.b2b) additionalBoardInfo.b2bDeficit += 1;
