@@ -115,7 +115,7 @@ const defaultCommands = {
             }
             if (args.length == 1) {
                 let setting = args[0]?.toLowerCase();
-                if (setting == "turnbased" || setting == "turn_based" || setting == "turn-based") {
+                if (setting == "turnbased" || setting == "turn_based" || setting == "turn-based" || setting == "tb") {
                     room.msg({
                         default: "If this mode is on, after you play some moves, I'll play the same number of moves.",
                         cute: "OO TURNBASED I LOV TURNBASED so turnbased is like first i place some pieces and then u place some pieces!! so fun!!! :>>>",
@@ -139,7 +139,7 @@ const defaultCommands = {
             
             let setting = args[0]?.toLowerCase();
             let value = args[1]?.toLowerCase();
-            if (setting == "turnbased" || setting == "turn_based" || setting == "turn-based") {
+            if (setting == "turnbased" || setting == "turn_based" || setting == "turn-based" || setting == "tb") {
                 if (isNaN(value)) {
                     room.chat("invalid value (must be number)");
                     return;
@@ -232,7 +232,7 @@ export async function handleChat(data, client, room, settings, logFuncs) {
 
     const commands = { ...defaultCommands, ...{} }; // todo make attitude specific commands
     commands["help"] = {
-        aliases: [],
+        aliases: ["h"],
         hostonly: false,
         exec: (client, room, settings, msgData, args) => {
             if (!args.length) {

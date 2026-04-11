@@ -14,11 +14,11 @@ export async function handlePlay(data, client, room, settings, gameData, logFunc
         error: ""
     };
 
-    const { logWrite, logPrint } = logFuncs;
-    const [tick, engine] = data; // allPlayers is all engines, for example [{name:'user1',gameid:1,engine:[Engine]}, {name:'user2',gameid:2,engine:[Engine]}]
-    const allPlayers = client.game.players;
+    const { logWrite, logPrint, debugPrint, logError } = logFuncs;
+    const [tick, engine] = data;
+    const opponent = client.game.opponents.filter(x => x.name.toLowerCase() != process.env.TETRIO_USERNAME.toLowerCase())[0];
+    client.game.spectate([opponent.gameid]); // ok what the fuck why do u have to spectate all in order to view their stats
 
-    const opponentEngine = allPlayers.filter(x => x.name != process.env.USERNAME)[0].engine;
     const additionalBoardInfo = {
         lastb2b: 0,
         b2bDeficit: 0
@@ -26,15 +26,18 @@ export async function handlePlay(data, client, room, settings, gameData, logFunc
 
     tick(async dt => {
         gameData.tickData = dt;
-        if (bot_engine.keyInfo.error.length > 0) {
-            room.chat("nooo! there was a problem with the keyfinder :("); // maybe do log handling here
+        if (bot_engine.keyInfo.error.length > 0 && !bot_engine.keyInfo.error.includes("HANDLED")) {
+            bot_engine.keyInfo.error += "HANDLED"; // so that the room doenst spam
+            room.chat("nooo! there was a problem with the keyfinder :(");
             logWrite(bot_engine.keyInfo.error);
-            return {
-                keys: Array(20).fill([
-                    keydown("hardDrop", dt.frame),
-                    keyup("hardDrop", dt.frame),
-                ]).flat()
+            let sf = 0;
+            let keys = [];
+            for (let i = 0; i < 23; i++) {
+                keys.push(keydown("hardDrop", dt.frame, sf));
+                sf += 0.2;
+                keys.push(keyup("hardDrop", dt.frame, sf));
             }
+            return { keys }
         }
 
         if (dt.frame == 0) {
@@ -49,7 +52,7 @@ export async function handlePlay(data, client, room, settings, gameData, logFunc
         }
         if (dt.frame <= 5) return {};
 
-        if (bot_engine.keyInfo.allKeys.length == 0 && !bot_engine.keyInfo.sendingStdin && (!settings.turnbased || engine.stats.pieces < settings.turnbased * Math.floor(opponentEngine.stats.pieces / settings.turnbased))) {
+        if (bot_engine.keyInfo.allKeys.length == 0 && !bot_engine.keyInfo.sendingStdin && (!settings.turnbased || engine.stats.pieces < settings.turnbased * Math.floor(opponent.engine.stats.pieces / settings.turnbased))) {
             bot_engine.keyInfo.startFrame = dt.frame; // to fudge a bit
             bot_engine.keyInfo.sendingStdin = true;
 

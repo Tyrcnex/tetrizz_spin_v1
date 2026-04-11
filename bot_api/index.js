@@ -109,26 +109,36 @@ async function spawnClient(roomCode, gameData) {
     });
 
     const bot_engine = {
-        engine: child_process.spawn("../target/release/keygen"),
+        engine: undefined,
         keyInfo: {}
     };
-    bot_engine.engine.stdout.on("data", data => {
-        data = JSON.parse(data.toString().trim());
-        bot_engine.keyInfo.allKeys = data.keys;
-        bot_engine.keyInfo.length = data.keys.length;
-        bot_engine.keyInfo.sendingStdin = false,
-        bot_engine.keyInfo.desiredLocation = {
-            piece: data.desired_location.piece,
-            x: data.desired_location.x,
-            y: data.desired_location.y,
-            rotation: {"Up": 0, "Right": 1, "Down": 2, "Left": 3}[data.desired_location.rotation]
-        };
-    });
 
-    bot_engine.engine.stderr.on("data", data => {
-        logError(data.toString());
-        keyInfo.error = data.toString();
-    });
+    function initializeEngine() {
+        bot_engine.engine = child_process.spawn("../target/release/keygen");
+        bot_engine.engine.stdout.on("data", data => {
+            data = JSON.parse(data.toString().trim());
+            bot_engine.keyInfo.allKeys = data.keys;
+            bot_engine.keyInfo.length = data.keys.length;
+            bot_engine.keyInfo.sendingStdin = false,
+            bot_engine.keyInfo.desiredLocation = {
+                piece: data.desired_location.piece,
+                x: data.desired_location.x,
+                y: data.desired_location.y,
+                rotation: {"Up": 0, "Right": 1, "Down": 2, "Left": 3}[data.desired_location.rotation]
+            };
+        });
+
+        bot_engine.engine.stderr.on("data", data => {
+            logError(data.toString());
+            bot_engine.keyInfo.error = data.toString();
+            bot_engine.engine.kill();
+            setTimeout(_ => {
+                initializeEngine();
+                logPrint(`Reinitialized bot engine for room ${room?.id}`);
+            }, 5000);
+        });
+    }
+    initializeEngine();
 
     client._destroy = client.destroy;
     client.destroy = async _ => {
@@ -177,6 +187,7 @@ async function spawnClient(roomCode, gameData) {
     client.on("room.chat", dt => handleChat(dt, client, room, settings, logFuncs));
     client.on("client.room.kick", async _ => await client.destroy());
     client.on("client.game.start", _ => {
+        if (!settings.enabled) return;
         if (Object.keys(roomCheck(room)).length) {
             room.chat("INVALID SETTINGS");
             client.destroy();
