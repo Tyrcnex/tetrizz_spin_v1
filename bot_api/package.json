@@ -10,7 +10,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@haelp/teto": "^4.2.2",
+    "@haelp/teto": "^4.2.5",
     "body-parser": "^2.2.0",
     "child_process": "^1.0.2",
     "cors": "^2.8.5",

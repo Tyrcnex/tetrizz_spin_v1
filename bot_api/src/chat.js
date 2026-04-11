@@ -212,7 +212,7 @@ const defaultCommands = {
     }
 };
 
-export async function handleChat(data, client, room, settings) {
+export async function handleChat(data, client, room, settings, logFuncs) {
     if (data.user.username == process.env.TETRIO_USERNAME) return;
 
     let content = data.content.trim();
@@ -273,4 +273,5 @@ export async function handleChat(data, client, room, settings) {
         return;
     }
     cmdObj.exec(client, room, settings, data, args);
+    logFuncs.debugPrint(`💬 Command "${userCmd}" ran in room ${room.id}. Whole message: "${content}"`);
 }

@@ -39,7 +39,7 @@ app.listen(port, _ => console.log(`Server running at http://localhost:${port}`))
 
 const logFile = createWriteStream("./tetr.log", { flags: 'a' });
 
-const logMsg = msg => " --- " + (new Date()).toUTCString() + " ---\n" + format(msg);
+const logMsg = msg => " --- " + (new Date()).toISOString() + " --- \n" + format(msg);
 const logWrite = msg => {
     logFile.write(logMsg(msg) + "\n");
     return msg;
@@ -49,7 +49,17 @@ const logPrint = msg => {
     console.log(logMsg(msg));
     return msg;
 }
-const logFuncs = { logWrite, logPrint };
+const debugPrint = msg => {
+    logWrite(" --- DEBUG ---\n" + msg + "\n");
+    return msg;
+}
+const logError = msg => {
+    let e = " --- ❌ ERROR ❌ --- \n" + msg + "\n"
+    logWrite(e);
+    console.error(logMsg(e));
+    return msg;
+}
+const logFuncs = { logWrite, logPrint, debugPrint, logError };
 
 (async function () {
     const client = await Client.create({
@@ -57,31 +67,17 @@ const logFuncs = { logWrite, logPrint };
         password: process.env.TETRIO_PASSWORD
     });
 
-    console.log("Root client connect was successful!");
-
-    client.on("social.dm", async dm => {
-        client.social.dm(dm.data.user, "hi, i cant read ur message, but if you want to use commands run %help (it's a percent sign). you cant run it in dms (this is todo), so run it after u invite me to a room!")
-            .catch(err => undefined);
-    });
+    logPrint("✅ Root client connect was successful!");
 
     client.on("social.invite", async data => {
-        // // maintenance
-        // if (data.sender == "64eee0bd4edc0179c6e85b12") {
-        //     // client.social.dm(data.sender, "hi owner");
-        // } else {
-        //     client.social.dm(data.sender, "sorry! im under maintenance rn, pls try again later :3");
-        //     return;
-        // }
-
         if (allGames.length > 4) {
-            client.social.dm(data.sender, "sorry! too many ppl are using the bot rn, ull have to wait for a bit, mb gang ill be back soon")
-                .catch(err => undefined);
+            logError(`Too many people using the bot now, rejected invite from ${data.sender}`);
             return;
         }
 
         let roomCode = data.roomid.toLowerCase();
         if (roomCode == "x-qp" || roomCode == "x-royale" || roomCode.startsWith("mm-")) {
-            client.social.dm(data.sender, "dont invite me to this room >:(");
+            logError(`Invite to unauthorized room, rejected invite from ${data.sender}`);
             return;
         }
 
@@ -92,12 +88,14 @@ const logFuncs = { logWrite, logPrint };
             tickData: undefined
         };
         gameData.clear = _ => {
-            console.assert(allGames.some(x => x.id == gameData.id), "Could not find data in allGames!");
+            if (!allGames.some(x => x.id == gameData.id)) {
+                logError("Could not find data in allGames!")
+            }
             allGames = allGames.filter(x => x.id != gameData.id);
         }
         allGames.push(gameData);
 
-        logPrint(`Joined room ${roomCode}`);
+        logPrint(`↗️ Joined room ${roomCode}`);
 
         await spawnClient(roomCode, gameData);
     });
@@ -106,7 +104,8 @@ const logFuncs = { logWrite, logPrint };
 async function spawnClient(roomCode, gameData) {
     const client = await Client.create({
         username: process.env.TETRIO_USERNAME,
-        password: process.env.TETRIO_PASSWORD
+        password: process.env.TETRIO_PASSWORD,
+        ribbon: { transport: "json" }
     });
 
     const bot_engine = {
@@ -127,14 +126,15 @@ async function spawnClient(roomCode, gameData) {
     });
 
     bot_engine.engine.stderr.on("data", data => {
-        console.error(data.toString());
+        logError(data.toString());
         keyInfo.error = data.toString();
     });
 
     client._destroy = client.destroy;
     client.destroy = async _ => {
-        logPrint(`Left room ${room?.id || roomCode}`);
+        await client?.room?.leave();
         await client._destroy();
+        logPrint(`🚪 Left room ${room?.id || roomCode}`);
         bot_engine.engine.kill();
         bot_engine.engine.stdout.removeAllListeners("data");
         gameData.clear();
@@ -144,7 +144,7 @@ async function spawnClient(roomCode, gameData) {
     try {
         room = await client.rooms.join(roomCode);
     } catch (e) {
-        console.error("could not join room!!");
+        logError(`Could not join room ${roomCode}`);
         client.destroy();
         return;
     }
@@ -165,11 +165,16 @@ async function spawnClient(roomCode, gameData) {
     gameData.client = client;
     gameData.settings = settings;
 
+    room._chat = room.chat;
+    room.chat = m => {
+        room._chat(m);
+        debugPrint(`💬 Sent message in ${room?.id}. Content: ${JSON.stringify(m)}`);
+    }
     room.msg = msgObj => room.chat(msgObj[settings.attitude]);
 
     await settingsSpectate(room, settings);
 
-    client.on("room.chat", dt => handleChat(dt, client, room, settings));
+    client.on("room.chat", dt => handleChat(dt, client, room, settings, logFuncs));
     client.on("client.room.kick", async _ => await client.destroy());
     client.on("client.game.start", _ => {
         if (Object.keys(roomCheck(room)).length) {
@@ -203,16 +208,16 @@ async function spawnClient(roomCode, gameData) {
 }
 
 process.on("uncaughtException", err => {
-    console.error(err);
+    logError(err);
     const id = crypto.randomBytes(8).toString("hex");
     try {
         logWrite(`ERROR (code ${id})${allGames.length ? ", left rooms" + allGames.map(x => x?.client?.room?.roomid).join(", ") : ""}\n${err.toString()}`);
         for (const game of allGames) {
-            game.client.room.chat(`SHOOT something REALLY BAD went wrong so i gtg, if u need to report this, tell chadhary_12345 (tyrcnex on discord) that the error code is ${id}`);
+            game.client.room.chat(`SHOOT something REALLY BAD went wrong so i gtg, if u need to report this, tell chadhary_12345 (tyrcnex on discord) or kimjoohyeon_ that the error code is ${id}`);
             game.client.destroy();
         }
     } catch (err) {
-        console.error(err);
+        logError(err);
     }
     allGames = [];
 });
